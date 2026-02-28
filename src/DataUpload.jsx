@@ -17,6 +17,25 @@ const DataUpload = ({ onDataLoaded, onClose }) => {
         }
     };
 
+    const parseCSVLine = (line) => {
+        const values = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (ch === '"') {
+                inQuotes = !inQuotes;
+            } else if (ch === ',' && !inQuotes) {
+                values.push(current.trim());
+                current = '';
+            } else {
+                current += ch;
+            }
+        }
+        values.push(current.trim());
+        return values;
+    };
+
     const processCSV = (text, fileName) => {
         try {
             const lines = text.split('\n').filter(line => line.trim());
@@ -24,33 +43,84 @@ const DataUpload = ({ onDataLoaded, onClose }) => {
                 throw new Error('CSV must have header row and at least one data row');
             }
 
-            const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
-            const data = lines.slice(1).map(line => {
-                const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-                const row = {};
-                headers.forEach((h, i) => {
-                    row[h] = values[i] || '';
+            const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/"/g, ''));
+
+            // Detect Amazon Business Report format
+            const isAmazonBizReport =
+                headers.some(h => h.includes('(child) asin')) &&
+                headers.some(h => h.includes('sessions - total'));
+
+            if (isAmazonBizReport) {
+                const findIdx = (patterns) =>
+                    headers.findIndex(h => patterns.some(p => h.includes(p)));
+
+                const parentAsinIdx = findIdx(['(parent) asin']);
+                const childAsinIdx = findIdx(['(child) asin']);
+                const sessionsIdx = findIdx(['sessions - total']);
+                const unitSessionPctIdx = findIdx(['unit session percentage']);
+                const buyBoxPctIdx = findIdx(['featured offer (buy box) percentage', 'buy box percentage']);
+                const unitsOrderedIdx = findIdx(['units ordered']);
+                const orderedSalesIdx = findIdx(['ordered product sales']);
+
+                const parsePct = (s) => parseFloat(s.replace('%', '').trim()) || 0;
+                const parseSales = (s) => parseFloat(s.replace(/[$,]/g, '').trim()) || 0;
+
+                const opportunities = lines.slice(1).map(line => {
+                    const values = parseCSVLine(line);
+                    const getVal = (idx) => (idx >= 0 ? values[idx] || '' : '');
+                    return {
+                        parentAsin: getVal(parentAsinIdx),
+                        childAsin: getVal(childAsinIdx),
+                        sessions: parseInt(getVal(sessionsIdx)) || 0,
+                        unitSessionPct: parsePct(getVal(unitSessionPctIdx)),
+                        buyBoxPct: parsePct(getVal(buyBoxPctIdx)),
+                        unitsOrdered: parseInt(getVal(unitsOrderedIdx)) || 0,
+                        orderedSales: parseSales(getVal(orderedSalesIdx)),
+                    };
+                }).filter(row => row.childAsin);
+
+                // Merge with existing stored data
+                const existing = JSON.parse(localStorage.getItem('dashboardData') || '{}');
+                const storedData = {
+                    ...existing,
+                    opportunities,
+                    uploadedAt: new Date().toISOString(),
+                };
+
+                localStorage.setItem('dashboardData', JSON.stringify(storedData));
+                setSuccess(`Successfully loaded ${opportunities.length} Amazon Business Report rows`);
+                setError(null);
+
+                if (onDataLoaded) {
+                    onDataLoaded(storedData);
+                }
+            } else {
+                const data = lines.slice(1).map(line => {
+                    const values = parseCSVLine(line);
+                    const row = {};
+                    headers.forEach((h, i) => {
+                        row[h] = values[i] || '';
+                    });
+                    return row;
                 });
-                return row;
-            });
 
-            // Aggregate data by territory, product type, device, design
-            const aggregated = aggregateData(data, headers);
+                // Aggregate data by territory, product type, device, design
+                const aggregated = aggregateData(data, headers);
 
-            // Store in localStorage
-            const storedData = {
-                dateRange: dateRange || extractDateFromFileName(fileName),
-                uploadedAt: new Date().toISOString(),
-                ...aggregated
-            };
+                // Store in localStorage
+                const storedData = {
+                    dateRange: dateRange || extractDateFromFileName(fileName),
+                    uploadedAt: new Date().toISOString(),
+                    ...aggregated
+                };
 
-            localStorage.setItem('dashboardData', JSON.stringify(storedData));
+                localStorage.setItem('dashboardData', JSON.stringify(storedData));
+                setSuccess(`Successfully loaded ${data.length} rows`);
+                setError(null);
 
-            setSuccess(`Successfully loaded ${data.length} rows`);
-            setError(null);
-
-            if (onDataLoaded) {
-                onDataLoaded(storedData);
+                if (onDataLoaded) {
+                    onDataLoaded(storedData);
+                }
             }
         } catch (err) {
             setError(`Error parsing CSV: ${err.message}`);

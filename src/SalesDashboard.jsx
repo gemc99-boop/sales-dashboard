@@ -173,7 +173,8 @@ export default function SalesDashboard({ customData, dateRange = 'January 2026' 
     { id: 'products', label: 'Product Types' },
     { id: 'devices', label: 'Devices' },
     { id: 'designs', label: 'Designs' },
-    { id: 'skus', label: 'Top SKUs' }
+    { id: 'skus', label: 'Top SKUs' },
+    { id: 'opportunities', label: 'Opportunities' }
   ];
 
   const pieData = [
@@ -535,6 +536,119 @@ export default function SalesDashboard({ customData, dateRange = 'January 2026' 
                 <p className="text-xs text-gray-500">Showing top {Math.min(displayLimit, (data.top_skus_us || fallbackData.top_skus_us).length)} SKUs by units sold</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Opportunities Tab */}
+        {activeTab === 'opportunities' && (
+          <div className="space-y-6">
+            {!data.opportunities ? (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+                <p className="text-4xl mb-4">📊</p>
+                <p className="text-gray-500 text-lg">Upload an Amazon Business Report CSV to see opportunities.</p>
+                <p className="text-gray-400 text-sm mt-2">Use the upload button above and select your Business Report export.</p>
+              </div>
+            ) : (
+              <>
+                {/* Section A: High Traffic, Low Conversion */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-1">High Traffic, Low Conversion</h3>
+                  <p className="text-sm text-gray-500 mb-4">Sessions &ge; 500 &amp; Conversion Rate &lt; 3.0% — sorted by sessions descending</p>
+                  {(() => {
+                    const rows = data.opportunities
+                      .filter(o => o.sessions >= 500 && o.unitSessionPct < 3.0)
+                      .sort((a, b) => b.sessions - a.sessions)
+                      .slice(0, 50);
+                    return rows.length === 0 ? (
+                      <p className="text-gray-400 text-sm">No items match this filter.</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-200">
+                              <th className="text-left py-3 px-2 font-semibold text-gray-600">Child ASIN</th>
+                              <th className="text-right py-3 px-2 font-semibold text-gray-600">Sessions</th>
+                              <th className="text-right py-3 px-2 font-semibold text-gray-600">Conv. Rate</th>
+                              <th className="text-right py-3 px-2 font-semibold text-gray-600">Units Ordered</th>
+                              <th className="text-right py-3 px-2 font-semibold text-gray-600">Sales</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rows.map((item) => (
+                              <tr key={item.childAsin} className="border-b border-gray-100 hover:bg-gray-50">
+                                <td className="py-2 px-2">
+                                  <a
+                                    href={`https://www.amazon.com/dp/${item.childAsin}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline font-mono text-xs"
+                                  >
+                                    {item.childAsin}
+                                  </a>
+                                </td>
+                                <td className="py-2 px-2 text-right">{formatNumber(item.sessions)}</td>
+                                <td className="py-2 px-2 text-right font-semibold text-amber-600">{item.unitSessionPct.toFixed(2)}%</td>
+                                <td className="py-2 px-2 text-right">{formatNumber(item.unitsOrdered)}</td>
+                                <td className="py-2 px-2 text-right">${item.orderedSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Section B: Buy Box at Risk */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-1">Buy Box at Risk</h3>
+                  <p className="text-sm text-gray-500 mb-4">Units Ordered &gt; 0 &amp; Buy Box % &lt; 80% — sorted by Buy Box % ascending</p>
+                  {(() => {
+                    const rows = data.opportunities
+                      .filter(o => o.unitsOrdered > 0 && o.buyBoxPct < 80.0)
+                      .sort((a, b) => a.buyBoxPct - b.buyBoxPct)
+                      .slice(0, 50);
+                    return rows.length === 0 ? (
+                      <p className="text-gray-400 text-sm">No items match this filter.</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-200">
+                              <th className="text-left py-3 px-2 font-semibold text-gray-600">Child ASIN</th>
+                              <th className="text-right py-3 px-2 font-semibold text-gray-600">Buy Box %</th>
+                              <th className="text-right py-3 px-2 font-semibold text-gray-600">Sessions</th>
+                              <th className="text-right py-3 px-2 font-semibold text-gray-600">Units Ordered</th>
+                              <th className="text-right py-3 px-2 font-semibold text-gray-600">Sales</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rows.map((item) => (
+                              <tr key={item.childAsin} className="border-b border-gray-100 hover:bg-gray-50">
+                                <td className="py-2 px-2">
+                                  <a
+                                    href={`https://www.amazon.com/dp/${item.childAsin}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline font-mono text-xs"
+                                  >
+                                    {item.childAsin}
+                                  </a>
+                                </td>
+                                <td className="py-2 px-2 text-right font-semibold text-red-600">{item.buyBoxPct.toFixed(2)}%</td>
+                                <td className="py-2 px-2 text-right">{formatNumber(item.sessions)}</td>
+                                <td className="py-2 px-2 text-right">{formatNumber(item.unitsOrdered)}</td>
+                                <td className="py-2 px-2 text-right">${item.orderedSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
           </div>
         )}
 
