@@ -67,9 +67,11 @@ const TERRITORY_CASE = `
   END
 `;
 
-// ── GBP price expression (handles string-stored currency values) ──────────────
-// GBP_Price is stored as STRING — strip any non-numeric chars before casting
-const GBP_EXPR = `SAFE_CAST(REGEXP_REPLACE(COALESCE(CAST(GBP_Price AS STRING), ''), r'[^0-9.]', '') AS FLOAT64)`;
+// ── Revenue expression ────────────────────────────────────────────────────────
+// GBP_Price is always empty in this dataset; use Net_Sale (multi-currency string)
+// Values are mixed currency (GBP/USD/EUR) — sum gives relative comparison, not true GBP total
+// Field kept as revenue_gbp for frontend compatibility; label as "Net Revenue" in UI
+const GBP_EXPR = `SAFE_CAST(REGEXP_REPLACE(COALESCE(CAST(Net_Sale AS STRING), ''), r'[^0-9.]', '') AS FLOAT64)`;
 
 // ── Custom Label parsing helpers ──────────────────────────────────────────────
 // Custom_Label format: PRODUCTTYPE-DEVICE-DESIGNPARENT-DESIGNCHILD (variable parts)
