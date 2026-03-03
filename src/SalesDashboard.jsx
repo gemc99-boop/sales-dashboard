@@ -4,6 +4,9 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 
+// ── API base (set VITE_API_BASE on Vercel to point to Cloud Run backend) ──────
+const API_BASE = import.meta.env.VITE_API_BASE || '';
+
 // ── Colours ───────────────────────────────────────────────────────────────────
 const TERRITORY_COLORS = {
   US: '#2563eb', UK: '#06b6d4', Europe: '#10b981', Japan: '#f59e0b', ROW: '#8b5cf6'
@@ -185,24 +188,24 @@ export default function SalesDashboard() {
 
   // ── Load data on date change ──────────────────────────────────────────────
   useEffect(() => {
-    fetchJson(`/api/overview${qs}`, 'overview', setOverview);
-    fetchJson(`/api/territories${qs}`, 'territories', setTerritories);
+    fetchJson(`${API_BASE}/api/overview${qs}`, 'overview', setOverview);
+    fetchJson(`${API_BASE}/api/territories${qs}`, 'territories', setTerritories);
   }, [from, to]);
 
   useEffect(() => {
-    if (activeTab === 'channels') fetchJson(`/api/channels${qs}`, 'channels', setChannels);
+    if (activeTab === 'channels') fetchJson(`${API_BASE}/api/channels${qs}`, 'channels', setChannels);
   }, [activeTab, from, to]);
 
   useEffect(() => {
     if (activeTab === 'products' || activeTab === 'devices' || activeTab === 'designs') {
       const gb = activeTab === 'devices' ? 'device' : activeTab === 'designs' ? 'design' : 'type';
       setProductGroupBy(gb);
-      fetchJson(`/api/products${qs}&groupBy=${gb}`, 'products', setProducts);
+      fetchJson(`${API_BASE}/api/products${qs}&groupBy=${gb}`, 'products', setProducts);
     }
   }, [activeTab, from, to]);
 
   useEffect(() => {
-    if (activeTab === 'skus') fetchJson(`/api/top-skus${qs}&limit=50`, 'skus', setTopSkus);
+    if (activeTab === 'skus') fetchJson(`${API_BASE}/api/top-skus${qs}&limit=50`, 'skus', setTopSkus);
   }, [activeTab, from, to]);
 
   // ── Preset handler ────────────────────────────────────────────────────────

@@ -77,7 +77,15 @@ const GBP_EXPR = `SAFE_CAST(REGEXP_REPLACE(COALESCE(CAST(Net_Sale AS STRING), ''
 // Custom_Label format: PRODUCTTYPE-DEVICE-DESIGNPARENT-DESIGNCHILD (variable parts)
 // We parse: product_type = first segment, device = second segment
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://sales-dashboard-iota-six.vercel.app',
+    'https://sales-dashboard-v2-786712421741.us-east1.run.app',
+    /\.vercel\.app$/,
+    'http://localhost:5173',
+  ],
+  credentials: true,
+}));
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // ── /api/overview ─────────────────────────────────────────────────────────────
