@@ -143,7 +143,7 @@ app.get('/api/channels', async (req, res) => {
         ${CHANNEL_CASE} AS channel,
         COUNT(*) AS orders,
         SUM(SAFE_CAST(Quantity AS INT64)) AS units,
-        SUM() AS revenue_usd
+        SUM(${USD_CONVERSION}) AS revenue_usd
       FROM ${FULL_TABLE}
       WHERE ${where} AND Is_Refunded != 'true'
       GROUP BY channel
@@ -181,7 +181,7 @@ app.get('/api/territories', async (req, res) => {
       SELECT
         ${TERRITORY_CASE} AS territory,
         SUM(SAFE_CAST(Quantity AS INT64)) AS units,
-        SUM() AS revenue_usd,
+        SUM(${USD_CONVERSION}) AS revenue_usd,
         COUNT(DISTINCT Custom_Label) AS unique_skus
       FROM ${FULL_TABLE}
       WHERE ${where} AND Is_Refunded != 'true'
@@ -318,7 +318,7 @@ app.get('/api/top-skus', async (req, res) => {
       SELECT
         Custom_Label AS sku,
         SUM(SAFE_CAST(Quantity AS INT64)) AS units,
-        SUM() AS revenue_usd,
+        SUM(${USD_CONVERSION}) AS revenue_usd,
         ${TERRITORY_CASE} AS territory
       FROM ${FULL_TABLE}
       WHERE ${where} AND Is_Refunded != 'true' AND Custom_Label IS NOT NULL ${territoryFilter}
