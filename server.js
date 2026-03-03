@@ -209,6 +209,34 @@ app.get('/api/products', async (req, res) => {
     } else if (groupBy === 'designParent') {
       groupExpr = `SPLIT(Custom_Label, '-')[SAFE_OFFSET(2)]`;
       labelField = 'design_parent';
+    } else if (groupBy === 'designParentNamed') {
+      // Join with headcase.tblLineups for readable names
+      const dpSql = `
+        SELECT
+          IFNULL(l.Lineup, dp_code) AS label,
+          ${TERRITORY_CASE} AS territory,
+          SUM(SAFE_CAST(o.Quantity AS INT64)) AS units
+        FROM ${FULL_TABLE} o
+        LEFT JOIN \`${PROJECT}.headcase.tblLineups\` l
+          ON SPLIT(o.Custom_Label, '-')[SAFE_OFFSET(2)] = l.LineupLabel
+        CROSS JOIN UNNEST([SPLIT(o.Custom_Label, '-')[SAFE_OFFSET(2)]]) AS dp_code
+        WHERE ${where} AND o.Is_Refunded != 'true' AND o.Custom_Label IS NOT NULL
+        GROUP BY label, territory
+        ORDER BY SUM(SAFE_CAST(o.Quantity AS INT64)) DESC
+      `;
+      const dpRows = await bq(dpSql);
+      const dpMap = new Map();
+      for (const r of dpRows) {
+        if (!r.label) continue;
+        if (!dpMap.has(r.label)) dpMap.set(r.label, { design_parent: r.label, US: 0, UK: 0, Europe: 0, Japan: 0, ROW: 0, total: 0 });
+        const entry = dpMap.get(r.label);
+        const u = Number(r.units) || 0;
+        entry[r.territory] = (entry[r.territory] || 0) + u;
+        entry.total += u;
+      }
+      const dpResult = [...dpMap.values()].sort((a, b) => b.total - a.total).slice(0, 50);
+      cacheSet(key, dpResult);
+      return res.json(dpResult);
     } else if (groupBy === 'brand') {
       groupExpr = `Brand`;
       labelField = 'brand';

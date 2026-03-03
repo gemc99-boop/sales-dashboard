@@ -195,7 +195,7 @@ export default function SalesDashboard() {
 
   useEffect(() => {
     if (activeTab === 'products' || activeTab === 'devices' || activeTab === 'brands' || activeTab === 'designParents' || activeTab === 'designs') {
-      const gbMap = { devices: 'device', designs: 'design', brands: 'brand', designParents: 'designParent', products: 'type' };
+      const gbMap = { devices: 'device', designs: 'design', brands: 'brand', designParents: 'designParentNamed', products: 'type' };
       const gb = gbMap[activeTab] || 'type';
       setProductGroupBy(gb);
       fetchJson(`/api/products${qs}&groupBy=${gb}`, 'products', setProducts);
