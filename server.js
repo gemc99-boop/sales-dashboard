@@ -309,9 +309,8 @@ app.get('/api/health', (req, res) => {
 app.get('/api/debug/prices', async (req, res) => {
   try {
     const sql = `
-      SELECT GBP_Price, Net_Sale, Currency, Quantity
+      SELECT GBP_Price, Net_Sale, Currency, Quantity, Marketplace
       FROM ${FULL_TABLE}
-      WHERE GBP_Price IS NOT NULL AND GBP_Price != ''
       LIMIT 20
     `;
     const rows = await bq(sql);
