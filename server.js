@@ -230,7 +230,7 @@ app.get('/api/products', async (req, res) => {
       // Join with headcase.tblLineups for readable names, prefixed with Brand
       const dpSql = `
         SELECT
-          CONCAT(IFNULL(o.Brand, ''), ' - ', IFNULL(l.Lineup, dp_code)) AS label,
+          dp_code AS label,
           ${TERRITORY_CASE} AS territory,
           SUM(SAFE_CAST(o.Quantity AS INT64)) AS units
         FROM ${FULL_TABLE} o
