@@ -227,10 +227,10 @@ app.get('/api/products', async (req, res) => {
       groupExpr = `SPLIT(Custom_Label, '-')[SAFE_OFFSET(2)]`;
       labelField = 'design_parent';
     } else if (groupBy === 'designParentNamed') {
-      // Join with headcase.tblLineups for readable names
+      // Join with headcase.tblLineups for readable names, prefixed with Brand
       const dpSql = `
         SELECT
-          IFNULL(l.Lineup, dp_code) AS label,
+          CONCAT(IFNULL(o.Brand, ''), ' - ', IFNULL(l.Lineup, dp_code)) AS label,
           ${TERRITORY_CASE} AS territory,
           SUM(SAFE_CAST(o.Quantity AS INT64)) AS units
         FROM ${FULL_TABLE} o
