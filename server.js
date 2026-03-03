@@ -67,25 +67,28 @@ const TERRITORY_CASE = `
   END
 `;
 
-// ── Revenue expression ────────────────────────────────────────────────────────
-// GBP_Price is always empty in this dataset; use Net_Sale (multi-currency string)
-// Values are mixed currency (GBP/USD/EUR) — sum gives relative comparison, not true GBP total
-// Field kept as revenue_gbp for frontend compatibility; label as "Net Revenue" in UI
-const GBP_EXPR = `SAFE_CAST(REGEXP_REPLACE(COALESCE(CAST(Net_Sale AS STRING), ''), r'[^0-9.]', '') AS FLOAT64)`;
+// ── Currency → USD conversion SQL expression ─────────────────────────────────
+// Approximate FX rates (updated periodically)
+const USD_CONVERSION = `
+  CASE Currency
+    WHEN 'USD' THEN SAFE_CAST(Net_Sale AS FLOAT64)
+    WHEN 'GBP' THEN SAFE_CAST(Net_Sale AS FLOAT64) * 1.27
+    WHEN 'EUR' THEN SAFE_CAST(Net_Sale AS FLOAT64) * 1.08
+    WHEN 'JPY' THEN SAFE_CAST(Net_Sale AS FLOAT64) * 0.0067
+    WHEN 'AUD' THEN SAFE_CAST(Net_Sale AS FLOAT64) * 0.65
+    WHEN 'SEK' THEN SAFE_CAST(Net_Sale AS FLOAT64) * 0.095
+    WHEN 'CHF' THEN SAFE_CAST(Net_Sale AS FLOAT64) * 1.12
+    WHEN 'CAD' THEN SAFE_CAST(Net_Sale AS FLOAT64) * 0.74
+    WHEN 'PLN' THEN SAFE_CAST(Net_Sale AS FLOAT64) * 0.25
+    ELSE SAFE_CAST(Net_Sale AS FLOAT64)
+  END
+`;
 
 // ── Custom Label parsing helpers ──────────────────────────────────────────────
 // Custom_Label format: PRODUCTTYPE-DEVICE-DESIGNPARENT-DESIGNCHILD (variable parts)
 // We parse: product_type = first segment, device = second segment
 
-app.use(cors({
-  origin: [
-    'https://sales-dashboard-iota-six.vercel.app',
-    'https://sales-dashboard-v2-786712421741.us-east1.run.app',
-    /\.vercel\.app$/,
-    'http://localhost:5173',
-  ],
-  credentials: true,
-}));
+app.use(cors());
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // ── /api/overview ─────────────────────────────────────────────────────────────
@@ -102,7 +105,7 @@ app.get('/api/overview', async (req, res) => {
       SELECT
         COUNT(*) AS total_orders,
         SUM(SAFE_CAST(Quantity AS INT64)) AS total_units,
-        SUM(CASE WHEN Is_Refunded != 'true' THEN ${GBP_EXPR} ELSE 0 END) AS total_gbp,
+        SUM(CASE WHEN Is_Refunded != 'true' THEN ${USD_CONVERSION} ELSE 0 END) AS total_usd,
         COUNT(DISTINCT Custom_Label) AS unique_skus,
         COUNT(DISTINCT SPLIT(Custom_Label, '-')[SAFE_OFFSET(1)]) AS unique_devices,
         COUNT(DISTINCT CONCAT(
@@ -140,21 +143,21 @@ app.get('/api/channels', async (req, res) => {
         ${CHANNEL_CASE} AS channel,
         COUNT(*) AS orders,
         SUM(SAFE_CAST(Quantity AS INT64)) AS units,
-        SUM(${GBP_EXPR}) AS revenue_gbp
+        SUM() AS revenue_usd
       FROM ${FULL_TABLE}
       WHERE ${where} AND Is_Refunded != 'true'
       GROUP BY channel
-      ORDER BY revenue_gbp DESC
+      ORDER BY revenue_usd DESC
     `;
 
     const rows = await bq(sql);
-    const total = rows.reduce((s, r) => s + (Number(r.revenue_gbp) || 0), 0);
+    const total = rows.reduce((s, r) => s + (Number(r.revenue_usd) || 0), 0);
     const result = rows.map(r => ({
       ...r,
-      revenue_gbp: Math.round(Number(r.revenue_gbp) || 0),
+      revenue_usd: Math.round(Number(r.revenue_usd) || 0),
       units: Number(r.units) || 0,
       orders: Number(r.orders) || 0,
-      pct: total > 0 ? +((Number(r.revenue_gbp) / total) * 100).toFixed(1) : 0,
+      pct: total > 0 ? +((Number(r.revenue_usd) / total) * 100).toFixed(1) : 0,
     }));
     cacheSet(key, result);
     res.json(result);
@@ -178,12 +181,12 @@ app.get('/api/territories', async (req, res) => {
       SELECT
         ${TERRITORY_CASE} AS territory,
         SUM(SAFE_CAST(Quantity AS INT64)) AS units,
-        SUM(${GBP_EXPR}) AS revenue_gbp,
+        SUM() AS revenue_usd,
         COUNT(DISTINCT Custom_Label) AS unique_skus
       FROM ${FULL_TABLE}
       WHERE ${where} AND Is_Refunded != 'true'
       GROUP BY territory
-      ORDER BY revenue_gbp DESC
+      ORDER BY revenue_usd DESC
     `;
 
     const rows = await bq(sql);
@@ -191,7 +194,7 @@ app.get('/api/territories', async (req, res) => {
     const result = rows.map(r => ({
       ...r,
       units: Number(r.units) || 0,
-      revenue_gbp: Math.round(Number(r.revenue_gbp) || 0),
+      revenue_usd: Math.round(Number(r.revenue_usd) || 0),
       unique_skus: Number(r.unique_skus) || 0,
       pct: total_units > 0 ? +((Number(r.units) / total_units) * 100).toFixed(1) : 0,
     }));
@@ -315,7 +318,7 @@ app.get('/api/top-skus', async (req, res) => {
       SELECT
         Custom_Label AS sku,
         SUM(SAFE_CAST(Quantity AS INT64)) AS units,
-        SUM(${GBP_EXPR}) AS revenue_gbp,
+        SUM() AS revenue_usd,
         ${TERRITORY_CASE} AS territory
       FROM ${FULL_TABLE}
       WHERE ${where} AND Is_Refunded != 'true' AND Custom_Label IS NOT NULL ${territoryFilter}
@@ -330,7 +333,7 @@ app.get('/api/top-skus', async (req, res) => {
       sku: r.sku,
       territory: r.territory,
       units: Number(r.units) || 0,
-      revenue_gbp: Math.round(Number(r.revenue_gbp) || 0),
+      revenue_usd: Math.round(Number(r.revenue_usd) || 0),
     }));
 
     cacheSet(key, result);
@@ -344,21 +347,6 @@ app.get('/api/top-skus', async (req, res) => {
 // ── Health ────────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// ── Debug: sample raw price fields ───────────────────────────────────────────
-app.get('/api/debug/prices', async (req, res) => {
-  try {
-    const sql = `
-      SELECT GBP_Price, Net_Sale, Currency, Quantity, Marketplace
-      FROM ${FULL_TABLE}
-      LIMIT 20
-    `;
-    const rows = await bq(sql);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
 });
 
 // ── SPA fallback ──────────────────────────────────────────────────────────────

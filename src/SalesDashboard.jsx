@@ -53,7 +53,7 @@ function getPresetRange(preset) {
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 const fmtNum = (n) => (Number(n) || 0).toLocaleString();
-const fmtGBP = (n) => `£${(Number(n) || 0).toLocaleString()}`;
+const fmtUSD = (n) => `$${(Number(n) || 0).toLocaleString()}`;
 
 // ── Components ────────────────────────────────────────────────────────────────
 const StatCard = ({ title, value, subtitle, color }) => (
@@ -223,7 +223,7 @@ export default function SalesDashboard() {
   // ── Overview summary ──────────────────────────────────────────────────────
   const ov = overview || {};
   const totalUnits = Number(ov.total_units) || 0;
-  const totalGBP = Math.round(Number(ov.total_gbp) || 0);
+  const totalUSD = Math.round(Number(ov.total_usd) || 0);
   const uniqueSkus = Number(ov.unique_skus) || 0;
   const uniqueDevices = Number(ov.unique_devices) || 0;
   const uniqueDesigns = Number(ov.unique_designs) || 0;
@@ -287,7 +287,7 @@ export default function SalesDashboard() {
         {/* ── Summary Cards ── */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
           <StatCard title="Total Units" value={loading.overview ? '…' : fmtNum(totalUnits)} color="#1f2937" />
-          <StatCard title="Total Revenue" value={loading.overview ? '…' : fmtGBP(totalGBP)} subtitle="GBP" color="#2563eb" />
+          <StatCard title="Total Revenue" value={loading.overview ? '…' : fmtUSD(totalUSD)} subtitle="USD" color="#2563eb" />
           <StatCard title="Active SKUs" value={loading.overview ? '…' : fmtNum(uniqueSkus)} color="#9333ea" />
           <StatCard title="Devices" value={loading.overview ? '…' : fmtNum(uniqueDevices)} color="#ea580c" />
           <StatCard title="Designs" value={loading.overview ? '…' : fmtNum(uniqueDesigns)} color="#db2777" />
@@ -353,7 +353,7 @@ export default function SalesDashboard() {
                       <p className="text-xs text-gray-400">Units</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-2">
-                      <p className="text-lg font-bold" style={{ color: TERRITORY_COLORS[t.territory] }}>{fmtGBP(t.revenue_gbp)}</p>
+                      <p className="text-lg font-bold" style={{ color: TERRITORY_COLORS[t.territory] }}>{fmtUSD(t.revenue_usd)}</p>
                       <p className="text-xs text-gray-400">Revenue</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-2">
@@ -378,17 +378,17 @@ export default function SalesDashboard() {
                 {/* Bar chart */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-800">Revenue by Channel (GBP)</h3>
-                    <button onClick={() => exportCSV(channels || [], 'channels', ['channel','orders','units','revenue_gbp','pct'])}
+                    <h3 className="text-lg font-semibold text-gray-800">Revenue by Channel (USD)</h3>
+                    <button onClick={() => exportCSV(channels || [], 'channels', ['channel','orders','units','revenue_usd','pct'])}
                       className="text-sm text-blue-600 hover:underline">↓ CSV</button>
                   </div>
                   <ResponsiveContainer width="100%" height={350}>
                     <BarChart data={channels || []} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                       <XAxis dataKey="channel" />
-                      <YAxis tickFormatter={v => `£${(v/1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(v, name) => [fmtGBP(v), name]} />
-                      <Bar dataKey="revenue_gbp" name="Revenue (GBP)" radius={[4,4,0,0]}>
+                      <YAxis tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(v, name) => [fmtUSD(v), name]} />
+                      <Bar dataKey="revenue_usd" name="Revenue (USD)" radius={[4,4,0,0]}>
                         {(channels || []).map((entry, i) => (
                           <Cell key={i} fill={CHANNEL_COLORS[entry.channel] || '#94a3b8'} />
                         ))}
@@ -424,7 +424,7 @@ export default function SalesDashboard() {
                         <th className="text-left py-3 px-2 font-semibold text-gray-600">Channel</th>
                         <th className="text-right py-3 px-2 font-semibold text-gray-600">Orders</th>
                         <th className="text-right py-3 px-2 font-semibold text-gray-600">Units</th>
-                        <th className="text-right py-3 px-2 font-semibold text-gray-600">Revenue (GBP)</th>
+                        <th className="text-right py-3 px-2 font-semibold text-gray-600">Revenue (USD)</th>
                         <th className="text-right py-3 px-2 font-semibold text-gray-600">% of Total</th>
                       </tr>
                     </thead>
@@ -439,7 +439,7 @@ export default function SalesDashboard() {
                           </td>
                           <td className="py-2 px-2 text-right">{fmtNum(ch.orders)}</td>
                           <td className="py-2 px-2 text-right">{fmtNum(ch.units)}</td>
-                          <td className="py-2 px-2 text-right font-semibold">{fmtGBP(ch.revenue_gbp)}</td>
+                          <td className="py-2 px-2 text-right font-semibold">{fmtUSD(ch.revenue_usd)}</td>
                           <td className="py-2 px-2 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <div className="w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -580,7 +580,7 @@ export default function SalesDashboard() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Top SKUs (all territories)</h3>
-              <button onClick={() => exportCSV(topSkus || [], 'top_skus', ['rank','sku','territory','units','revenue_gbp'])}
+              <button onClick={() => exportCSV(topSkus || [], 'top_skus', ['rank','sku','territory','units','revenue_usd'])}
                 className="text-sm text-blue-600 hover:underline">↓ CSV</button>
             </div>
             {loading.skus ? <LoadingOverlay /> : errors.skus ? <ErrorBanner msg={errors.skus} /> : (
@@ -592,7 +592,7 @@ export default function SalesDashboard() {
                       <th className="text-left py-3 px-2 font-semibold text-gray-600">SKU</th>
                       <th className="text-left py-3 px-2 font-semibold text-gray-600">Territory</th>
                       <th className="text-right py-3 px-2 font-semibold text-gray-600">Units</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-600">Revenue (GBP)</th>
+                      <th className="text-right py-3 px-2 font-semibold text-gray-600">Revenue (USD)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -611,7 +611,7 @@ export default function SalesDashboard() {
                           </span>
                         </td>
                         <td className="py-2 px-2 text-right font-semibold text-blue-600">{fmtNum(item.units)}</td>
-                        <td className="py-2 px-2 text-right font-semibold text-gray-700">{fmtGBP(item.revenue_gbp)}</td>
+                        <td className="py-2 px-2 text-right font-semibold text-gray-700">{fmtUSD(item.revenue_usd)}</td>
                       </tr>
                     ))}
                   </tbody>
