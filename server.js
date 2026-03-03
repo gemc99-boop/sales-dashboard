@@ -67,6 +67,10 @@ const TERRITORY_CASE = `
   END
 `;
 
+// ── GBP price expression (handles string-stored currency values) ──────────────
+// GBP_Price is stored as STRING — strip any non-numeric chars before casting
+const GBP_EXPR = `SAFE_CAST(REGEXP_REPLACE(COALESCE(CAST(GBP_Price AS STRING), ''), r'[^0-9.]', '') AS FLOAT64)`;
+
 // ── Custom Label parsing helpers ──────────────────────────────────────────────
 // Custom_Label format: PRODUCTTYPE-DEVICE-DESIGNPARENT-DESIGNCHILD (variable parts)
 // We parse: product_type = first segment, device = second segment
@@ -88,7 +92,7 @@ app.get('/api/overview', async (req, res) => {
       SELECT
         COUNT(*) AS total_orders,
         SUM(SAFE_CAST(Quantity AS INT64)) AS total_units,
-        SUM(CASE WHEN Is_Refunded != 'true' THEN SAFE_CAST(GBP_Price AS FLOAT64) ELSE 0 END) AS total_gbp,
+        SUM(CASE WHEN Is_Refunded != 'true' THEN ${GBP_EXPR} ELSE 0 END) AS total_gbp,
         COUNT(DISTINCT Custom_Label) AS unique_skus,
         COUNT(DISTINCT SPLIT(Custom_Label, '-')[SAFE_OFFSET(1)]) AS unique_devices,
         COUNT(DISTINCT CONCAT(
@@ -126,7 +130,7 @@ app.get('/api/channels', async (req, res) => {
         ${CHANNEL_CASE} AS channel,
         COUNT(*) AS orders,
         SUM(SAFE_CAST(Quantity AS INT64)) AS units,
-        SUM(SAFE_CAST(GBP_Price AS FLOAT64)) AS revenue_gbp
+        SUM(${GBP_EXPR}) AS revenue_gbp
       FROM ${FULL_TABLE}
       WHERE ${where} AND Is_Refunded != 'true'
       GROUP BY channel
@@ -164,7 +168,7 @@ app.get('/api/territories', async (req, res) => {
       SELECT
         ${TERRITORY_CASE} AS territory,
         SUM(SAFE_CAST(Quantity AS INT64)) AS units,
-        SUM(SAFE_CAST(GBP_Price AS FLOAT64)) AS revenue_gbp,
+        SUM(${GBP_EXPR}) AS revenue_gbp,
         COUNT(DISTINCT Custom_Label) AS unique_skus
       FROM ${FULL_TABLE}
       WHERE ${where} AND Is_Refunded != 'true'
@@ -270,7 +274,7 @@ app.get('/api/top-skus', async (req, res) => {
       SELECT
         Custom_Label AS sku,
         SUM(SAFE_CAST(Quantity AS INT64)) AS units,
-        SUM(SAFE_CAST(GBP_Price AS FLOAT64)) AS revenue_gbp,
+        SUM(${GBP_EXPR}) AS revenue_gbp,
         ${TERRITORY_CASE} AS territory
       FROM ${FULL_TABLE}
       WHERE ${where} AND Is_Refunded != 'true' AND Custom_Label IS NOT NULL ${territoryFilter}
