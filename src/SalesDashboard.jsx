@@ -197,8 +197,9 @@ export default function SalesDashboard() {
   }, [activeTab, from, to]);
 
   useEffect(() => {
-    if (activeTab === 'products' || activeTab === 'devices' || activeTab === 'designs') {
-      const gb = activeTab === 'devices' ? 'device' : activeTab === 'designs' ? 'design' : 'type';
+    if (activeTab === 'products' || activeTab === 'devices' || activeTab === 'brands' || activeTab === 'designParents' || activeTab === 'designs') {
+      const gbMap = { devices: 'device', designs: 'design', brands: 'brand', designParents: 'designParentNamed', products: 'type' };
+      const gb = gbMap[activeTab] || 'type';
       setProductGroupBy(gb);
       fetchJson(`${API_BASE}/api/products${qs}&groupBy=${gb}`, 'products', setProducts);
     }
@@ -242,6 +243,8 @@ export default function SalesDashboard() {
     { id: 'channels', label: 'Sales Channels' },
     { id: 'products', label: 'Product Types' },
     { id: 'devices', label: 'Devices' },
+    { id: 'brands', label: 'Brands' },
+    { id: 'designParents', label: 'Design Groups' },
     { id: 'designs', label: 'Designs' },
     { id: 'skus', label: 'Top SKUs' },
     { id: 'opportunities', label: 'Opportunities' },
@@ -502,11 +505,57 @@ export default function SalesDashboard() {
         )}
 
         {/* ────────────────────────────────────────────────────────────────── */}
+        {/* BRANDS (LICENSE) TAB */}
+        {/* ────────────────────────────────────────────────────────────────── */}
+        {activeTab === 'brands' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Sales by Brand (License) — by Territory</h3>
+            {loading.products ? <LoadingOverlay /> : errors.products ? <ErrorBanner msg={errors.products} /> : (
+              <ResponsiveContainer width="100%" height={Math.max(400, (products || []).slice(0, displayLimit).length * 28)}>
+                <BarChart data={(products || []).slice(0, displayLimit)} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" tickFormatter={fmtNum} />
+                  <YAxis dataKey="brand" type="category" width={180} tick={{ fontSize: 10 }} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  {Object.keys(TERRITORY_COLORS).map(t => (
+                    <Bar key={t} dataKey={t} fill={TERRITORY_COLORS[t]} stackId="a" radius={[0,4,4,0]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        )}
+
+        {/* ────────────────────────────────────────────────────────────────── */}
+        {/* DESIGN PARENT GROUPS TAB */}
+        {/* ────────────────────────────────────────────────────────────────── */}
+        {activeTab === 'designParents' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Sales by Design Group (Parent) — by Territory</h3>
+            {loading.products ? <LoadingOverlay /> : errors.products ? <ErrorBanner msg={errors.products} /> : (
+              <ResponsiveContainer width="100%" height={Math.max(400, (products || []).slice(0, displayLimit).length * 28)}>
+                <BarChart data={(products || []).slice(0, displayLimit)} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis type="number" tickFormatter={fmtNum} />
+                  <YAxis dataKey="design_parent" type="category" width={150} tick={{ fontSize: 10 }} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  {Object.keys(TERRITORY_COLORS).map(t => (
+                    <Bar key={t} dataKey={t} fill={TERRITORY_COLORS[t]} stackId="a" radius={[0,4,4,0]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        )}
+
+        {/* ────────────────────────────────────────────────────────────────── */}
         {/* DESIGNS TAB */}
         {/* ────────────────────────────────────────────────────────────────── */}
         {activeTab === 'designs' && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Top Designs by Territory</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Top Designs (Parent-Child) — by Territory</h3>
             {loading.products ? <LoadingOverlay /> : errors.products ? <ErrorBanner msg={errors.products} /> : (
               <ResponsiveContainer width="100%" height={Math.max(400, (products || []).slice(0, displayLimit).length * 28)}>
                 <BarChart data={(products || []).slice(0, displayLimit)} layout="vertical">
