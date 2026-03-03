@@ -206,6 +206,9 @@ app.get('/api/products', async (req, res) => {
     } else if (groupBy === 'design') {
       groupExpr = `CONCAT(IFNULL(SPLIT(Custom_Label, '-')[SAFE_OFFSET(2)],''), IFNULL(CONCAT('-', SPLIT(Custom_Label, '-')[SAFE_OFFSET(3)]),''))`;
       labelField = 'design';
+    } else if (groupBy === 'designParent') {
+      groupExpr = `SPLIT(Custom_Label, '-')[SAFE_OFFSET(2)]`;
+      labelField = 'design_parent';
     } else if (groupBy === 'brand') {
       groupExpr = `Brand`;
       labelField = 'brand';
