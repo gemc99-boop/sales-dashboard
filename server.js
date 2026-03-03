@@ -305,6 +305,22 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// ── Debug: sample raw price fields ───────────────────────────────────────────
+app.get('/api/debug/prices', async (req, res) => {
+  try {
+    const sql = `
+      SELECT GBP_Price, Net_Sale, Currency, Quantity
+      FROM ${FULL_TABLE}
+      WHERE GBP_Price IS NOT NULL AND GBP_Price != ''
+      LIMIT 20
+    `;
+    const rows = await bq(sql);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── SPA fallback ──────────────────────────────────────────────────────────────
 app.get('/{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
